@@ -4,7 +4,22 @@
 const actor = @import("actor").actor;
 const std = @import("std");
 const msg = @import("message").inbox;
+const envelope = @import("message").envelope;
 const manager = @import("manager").manager;
+
+const Tessss = struct {
+    pizza: bool,
+};
+
+const Yesss = struct {
+    popcorn: bool,
+};
+
+const OhYeah = union(enum) { Tessss, Yesss };
+
+fn worke(f: msg.Messagex) void {
+    std.debug.print("Does this work {any}", .{f.time});
+}
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -20,34 +35,39 @@ pub fn main() !void {
     defer mng.deinit();
     try mng.manage();
 
-    try mng.spawnActor(hello);
-    while (true) {
-        std.debug.print("need to keep this running", .{});
-        std.Thread.sleep(std.time.ns_per_s * 2);
-    }
+    var TessMessage = try allcator.create(msg.NewMessage(OhYeah));
+    TessMessage = try msg.NewMessage(OhYeah).spawn(allcator);
+
+    const newenv = try envelope.Envelope.newSystemEnvelope(allcator, msg.NewMessage(Tessss), TessMessage);
+
+    var newActor = actor.ActorStruct.init(allcator, "started", TestBehavior);
+    newActor.call(newenv);
+
+    std.debug.print("what is this? {any}\n", .{newenv});
 
     std.debug.print("Did spawn work?", .{});
-
-    var newActor = actor.ActorStruct.init(allcator, "first", hello);
-    const secondActor = actor.ActorStruct.init(allcator, "first", hello);
-
-    const newMessage = msg.Message{ .time = 21 + @as(i16, @intCast(12)), .type = msg.MessageType.increase };
-    newActor.sendMessage(secondActor.id, newMessage);
-
-    defer newActor.cleanQueue();
 }
 
-fn hello(msga: msg.Message) void {
-    switch (msga.type) {
-        msg.MessageType.increase => {
-            std.debug.print("increasing this is the time {d} \n", .{msga.time});
-            return;
+fn TestBehavior(message: envelope.Envelope) void {
+    //const msgr = @ptrCast(*msg.NewMessage(Tessss))(message.msg);
+    //const msgr: *msg.NewMessage(Tessss) = @ptrCast(*align(@alignOf(msg.NewMessage(Tessss))) &message.msg);
+    //const msgr: *msg.NewMessage(Tessss) = @alignCast(@ptrCast(&message.msg));
+    const msgr: *msg.NewMessage(OhYeah) = @constCast(@alignCast(@ptrCast(&message.msg)));
+    const payload = msgr.*.payload;
+
+    switch (payload) {
+        .system => |sys_msg| {
+            switch (sys_msg) {
+                .healthcheck => {},
+                .kill => {},
+                .spawn => {},
+            }
         },
-        msg.MessageType.decrease => {
-            std.debug.print("decreasing this is the time {d} \n", .{msga.time});
-            return;
+        .user => |user_msg| {
+            switch (user_msg.custom) {
+                .Tessss => {},
+                .Yesss => {},
+            }
         },
     }
-    std.debug.print("no matches", .{});
-    return;
 }

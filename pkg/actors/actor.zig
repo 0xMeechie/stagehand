@@ -1,17 +1,18 @@
 const std = @import("std");
 const uuid = @import("uuid");
 const utils = @import("utils");
-const msg = @import("message");
+const envelope = @import("message").envelope;
+const Mailbox = @import("message").MailBox;
 
 pub const ActorStruct = struct {
     id: u128,
-    queue: utils.queue.Queue,
+    mailbox: Mailbox,
     status: []const u8,
-    behavior: *const fn (message: msg.inbox.Message) void,
+    behavior: *const fn (message: envelope.Envelope) void,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, status: []const u8, behavior: *const fn (message: msg.inbox.Message) void) ActorStruct {
-        const queue = try utils.queue.Queue.init(msg.inbox.Message, allocator);
+    pub fn init(allocator: std.mem.Allocator, status: []const u8, behavior: *const fn (message: envelope.Envelope) void) ActorStruct {
+        const queue = try utils.queue.Queue.init(envelope.Envelope, allocator);
         return ActorStruct{
             .id = uuid.v7.new(),
             .queue = queue,
@@ -21,11 +22,11 @@ pub const ActorStruct = struct {
         };
     }
 
-    pub fn addMessage(self: *ActorStruct, message: msg.inbox.Message) !void {
+    pub fn addMessage(self: *ActorStruct, message: envelope.Envelope) !void {
         try self.queue.enqueue(message);
     }
 
-    pub fn grabMessage(self: *ActorStruct) !msg.inbox.Message {
+    pub fn grabMessage(self: *ActorStruct) !envelope.Envelope {
         return self.queue.dequeue();
     }
 
@@ -33,12 +34,20 @@ pub const ActorStruct = struct {
         return self.queue.count();
     }
 
-    pub fn call(self: *ActorStruct) void {
-        self.behavior(self.message);
+    pub fn call(self: *ActorStruct, message: envelope.Envelope) void {
+        self.behavior(message);
     }
 
     pub fn cleanQueue(self: *ActorStruct) void {
         self.queue.deinit();
+    }
+
+    pub fn is_empty(self: *ActorStruct) bool {
+        if (self.grabQueueCount() == 0) {
+            return true;
+        }
+
+        return false;
     }
 
     pub fn run() void {
@@ -50,11 +59,11 @@ pub const ActorStruct = struct {
         }
     }
 
-    pub fn sendMessage(self: *ActorStruct, target_actor: u128, message: msg.inbox.Message) void {
+    pub fn sendMessage(self: *ActorStruct, target_actor: u128, message: envelope.Envelope) void {
         //put message in inbox of other Actor
         //We want to send this to the manager and let the manager send it to the direct actor
         std.debug.print("myIDis {d}\n", .{self.id});
         std.debug.print("Actor ID is {d}\n", .{target_actor});
-        std.debug.print("Message is {d}\n", .{message.time});
+        std.debug.print("Message is {d}\n", .{message.receipent});
     }
 };

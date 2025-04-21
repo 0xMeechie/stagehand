@@ -1,22 +1,22 @@
 const std = @import("std");
 const mem = std.mem;
-const msg = @import("message");
+const envelope = @import("message").envelope;
 
 const QueueError = error{
     EmptyQueue,
 };
 
 pub const Queue = struct {
-    items: std.ArrayList(msg.inbox.Message),
+    items: std.ArrayList(envelope.Envelope),
     allocator: mem.Allocator,
 
     pub fn init(comptime T: type, allocator: mem.Allocator) !Queue {
         return Queue{ .items = std.ArrayList(T).init(allocator), .allocator = allocator };
     }
-    pub fn enqueue(self: *Queue, item: msg.inbox.Message) !void {
+    pub fn enqueue(self: *Queue, item: envelope.Envelope) !void {
         try self.items.append(item);
     }
-    pub fn dequeue(self: *Queue) error{EmptyQueue}!msg.inbox.Message {
+    pub fn dequeue(self: *Queue) error{EmptyQueue}!envelope.Envelope {
         if (!self.isEmpty()) {
             return self.items.orderedRemove(0);
         }
